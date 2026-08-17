@@ -390,14 +390,6 @@ document.getElementById('exportPdfBtn').addEventListener('click', async () => {
   } catch (err) { /* handled */ }
 });
 
-// ============ ปุ่มคัดลอกโค้ด Code.gs ============
-document.getElementById('copyCodeBtn').addEventListener('click', () => {
-  const codeEl = document.getElementById('codeGsBlock');
-  navigator.clipboard.writeText(codeEl.textContent).then(() => {
-    Swal.fire({ toast:true, position:'top-end', icon:'success', title:'คัดลอกโค้ดแล้ว', showConfirmButton:false, timer:1500 });
-  });
-});
-
 // ============ แจ้งเตือนถ้ายังไม่ได้ตั้งค่า API ============
 function showConfigBanner() {
   if (isApiConfigured()) return;
