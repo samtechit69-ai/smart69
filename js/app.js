@@ -115,7 +115,7 @@ document.querySelectorAll('[data-tab]').forEach(link => {
     document.getElementById('tab-' + link.dataset.tab).classList.add('active');
     if (link.dataset.tab === 'dashboard') loadDashboard();
     if (link.dataset.tab === 'admin') loadAdmin();
-    if (link.dataset.tab === 'repair') loadDepartmentOptions();
+    if (link.dataset.tab === 'repair') { loadDepartmentOptions(); loadEquipmentOptions(); }
   });
 });
 
@@ -145,6 +145,30 @@ async function loadDepartmentOptions() {
   select.innerHTML = '<option value="">-- เลือกฝ่าย/สาขา --</option>' +
     departments.map(d => `<option>${d}</option>`).join('');
   if (currentValue && departments.includes(currentValue)) select.value = currentValue;
+}
+
+// ============ ฟอร์มแจ้งซ่อม: โหลดรายชื่ออุปกรณ์จาก Google Sheet (Equipment) ============
+// รายการเริ่มต้น (เผื่อยังไม่เคยเพิ่มอุปกรณ์ลงชีต) — จะแสดงรวมกับรายการที่ Admin เพิ่มเข้ามาใหม่เสมอ
+const DEFAULT_EQUIPMENT = ['เครื่องปริ้นเตอร์', 'โปรเจกเตอร์', 'คอมพิวเตอร์', 'เครื่องปรับอากาศ'];
+
+async function loadEquipmentOptions() {
+  let equipment = DEFAULT_EQUIPMENT.slice();
+  try {
+    const data = await callServer('getMasterData');
+    if (data && data.equipment && data.equipment.length) {
+      const extra = data.equipment.filter(e => !equipment.includes(e));
+      equipment = equipment.concat(extra);
+    }
+  } catch (err) {
+    // เชื่อมต่อไม่ได้ ใช้รายการเริ่มต้นแทน
+  }
+
+  const select = document.getElementById('equipment');
+  if (!select) return;
+  const currentValue = select.value;
+  select.innerHTML = '<option value="">-- เลือกอุปกรณ์ --</option>' +
+    equipment.map(e => `<option>${e}</option>`).join('');
+  if (currentValue && equipment.includes(currentValue)) select.value = currentValue;
 }
 
 // ============ ฟอร์มแจ้งซ่อม: อัปโหลดรูปภาพ ============
@@ -181,13 +205,14 @@ document.getElementById('repairForm').addEventListener('submit', async (e) => {
     fullName: document.getElementById('fullName').value.trim(),
     department: document.getElementById('department').value,
     equipment: document.getElementById('equipment').value.trim(),
+    location: document.getElementById('location').value.trim(),
     urgency: document.getElementById('urgency').value,
     detail: document.getElementById('detail').value.trim(),
     imageBase64: imageBase64Input.value,
     fileName: imageInput.files[0] ? imageInput.files[0].name : ''
   };
 
-  if (!formObj.fullName || !formObj.department || !formObj.equipment || !formObj.detail) {
+  if (!formObj.fullName || !formObj.department || !formObj.equipment || !formObj.location || !formObj.detail) {
     Swal.fire({ icon: 'warning', title: 'กรอกข้อมูลไม่ครบ', text: 'กรุณากรอกข้อมูลให้ครบทุกช่อง', confirmButtonColor: '#1f9d55' });
     return;
   }
@@ -276,7 +301,7 @@ function statusBadge(status) {
 
 function renderRequestTable(requests) {
   const body = document.getElementById('requestTableBody');
-  if (!requests.length) { body.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">ยังไม่มีรายการแจ้งซ่อม</td></tr>'; return; }
+  if (!requests.length) { body.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">ยังไม่มีรายการแจ้งซ่อม</td></tr>'; return; }
   body.innerHTML = requests.map(r => `
     <tr>
       <td><b>${r.ticketId}</b></td>
@@ -284,6 +309,7 @@ function renderRequestTable(requests) {
       <td>${r.fullName}</td>
       <td>${r.department}</td>
       <td>${r.equipment}</td>
+      <td>${r.location || '-'}</td>
       <td>${urgencyBadge(r.urgency)}</td>
       <td>${statusBadge(r.status)}</td>
       <td>${r.imageUrl ? '<a href="'+r.imageUrl+'" target="_blank"><i class="fa-solid fa-image text-success"></i></a>' : '-'}</td>
@@ -382,6 +408,7 @@ function renderMasterList(elId, items, sheetName) {
         await callServer('deleteMasterItem', { sheetName: btn.dataset.sheet, rowIndex: parseInt(btn.dataset.row) });
         loadAdmin();
         if (btn.dataset.sheet === 'Departments') loadDepartmentOptions();
+        if (btn.dataset.sheet === 'Equipment') loadEquipmentOptions();
       } catch (err) { /* handled */ }
     });
   });
@@ -397,6 +424,7 @@ function bindAddMaster(btnId, inputId, sheetName) {
       input.value = '';
       loadAdmin();
       if (sheetName === 'Departments') loadDepartmentOptions();
+      if (sheetName === 'Equipment') loadEquipmentOptions();
     } catch (err) { /* handled */ }
   });
 }
@@ -436,4 +464,5 @@ window.addEventListener('load', () => {
   initLiff();
   loadDashboard();
   loadDepartmentOptions();
+  loadEquipmentOptions();
 });
