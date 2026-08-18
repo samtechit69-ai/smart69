@@ -68,7 +68,9 @@
             </div>
             <div class="col-md-6">
               <label class="form-label">ชื่ออุปกรณ์ที่แจ้งซ่อม</label>
-              <input type="text" class="form-control" id="equipment" placeholder="เช่น เครื่องปริ้นเตอร์, โปรเจกเตอร์" required>
+              <select class="form-select" id="equipment" required>
+                <option value="">-- เลือกอุปกรณ์ --</option>
+              </select>
             </div>
             <div class="col-md-6">
               <label class="form-label">ระดับความเร่งด่วน</label>
@@ -77,6 +79,10 @@
                 <option value="ปานกลาง">🟠 ปานกลาง</option>
                 <option value="สูง">🔴 สูง</option>
               </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">สถานที่ (อาคาร/ห้อง)</label>
+              <input type="text" class="form-control" id="location" placeholder="เช่น อาคาร 2 ชั้น 3 ห้อง 301" required>
             </div>
             <div class="col-12">
               <label class="form-label">รายละเอียดอาการ</label>
@@ -146,11 +152,11 @@
             <thead>
               <tr>
                 <th>Ticket</th><th>วันที่</th><th>ผู้แจ้ง</th><th>ฝ่าย/สาขา</th>
-                <th>อุปกรณ์</th><th>เร่งด่วน</th><th>สถานะ</th><th>รูป</th>
+                <th>อุปกรณ์</th><th>สถานที่</th><th>เร่งด่วน</th><th>สถานะ</th><th>รูป</th>
               </tr>
             </thead>
             <tbody id="requestTableBody">
-              <tr><td colspan="8" class="text-center text-muted py-4">กำลังโหลดข้อมูล...</td></tr>
+              <tr><td colspan="9" class="text-center text-muted py-4">กำลังโหลดข้อมูล...</td></tr>
             </tbody>
           </table>
         </div>
