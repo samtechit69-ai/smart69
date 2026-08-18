@@ -115,8 +115,37 @@ document.querySelectorAll('[data-tab]').forEach(link => {
     document.getElementById('tab-' + link.dataset.tab).classList.add('active');
     if (link.dataset.tab === 'dashboard') loadDashboard();
     if (link.dataset.tab === 'admin') loadAdmin();
+    if (link.dataset.tab === 'repair') loadDepartmentOptions();
   });
 });
+
+// ============ ฟอร์มแจ้งซ่อม: โหลดรายชื่อฝ่าย/สาขาจาก Google Sheet (Departments) ============
+// รายการเริ่มต้น (เผื่อยังไม่เคยเพิ่มฝ่าย/สาขาลงชีต) — จะแสดงรวมกับรายการที่ Admin เพิ่มเข้ามาใหม่เสมอ
+const DEFAULT_DEPARTMENTS = [
+  'ฝ่ายวิชาการ', 'ฝ่ายกิจการนักเรียน/นักศึกษา', 'ฝ่ายส่งเสริมการศึกษา', 'ฝ่ายวางแผนฯ',
+  'ฝ่ายบัญชีและการเงิน', 'สาขาวิชาการบัญชี', 'สาขาวิชาการโรงแรม/ท่องเที่ยว',
+  'สาขาวิชาการตลาด/ธุรกิจค้าปลีก', 'สาขาวิชาเทคโนโลยีธุรกิจดิจิทัล/สารสนเทศ', 'สาขาวิชาการจัดการโลจิสติกส์ฯ'
+];
+
+async function loadDepartmentOptions() {
+  let departments = DEFAULT_DEPARTMENTS.slice();
+  try {
+    const data = await callServer('getMasterData');
+    if (data && data.departments && data.departments.length) {
+      const extra = data.departments.filter(d => !departments.includes(d));
+      departments = departments.concat(extra);
+    }
+  } catch (err) {
+    // เชื่อมต่อไม่ได้ ใช้รายการเริ่มต้นแทน
+  }
+
+  const select = document.getElementById('department');
+  if (!select) return;
+  const currentValue = select.value;
+  select.innerHTML = '<option value="">-- เลือกฝ่าย/สาขา --</option>' +
+    departments.map(d => `<option>${d}</option>`).join('');
+  if (currentValue && departments.includes(currentValue)) select.value = currentValue;
+}
 
 // ============ ฟอร์มแจ้งซ่อม: อัปโหลดรูปภาพ ============
 const uploadBox = document.getElementById('uploadBox');
@@ -352,6 +381,7 @@ function renderMasterList(elId, items, sheetName) {
       try {
         await callServer('deleteMasterItem', { sheetName: btn.dataset.sheet, rowIndex: parseInt(btn.dataset.row) });
         loadAdmin();
+        if (btn.dataset.sheet === 'Departments') loadDepartmentOptions();
       } catch (err) { /* handled */ }
     });
   });
@@ -366,6 +396,7 @@ function bindAddMaster(btnId, inputId, sheetName) {
       await callServer('addMasterItem', { sheetName, value });
       input.value = '';
       loadAdmin();
+      if (sheetName === 'Departments') loadDepartmentOptions();
     } catch (err) { /* handled */ }
   });
 }
@@ -404,4 +435,5 @@ window.addEventListener('load', () => {
   showConfigBanner();
   initLiff();
   loadDashboard();
+  loadDepartmentOptions();
 });
