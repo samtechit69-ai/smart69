@@ -150,7 +150,7 @@ async function loadDepartmentOptions() {
 
 // ============ ฟอร์มแจ้งซ่อม: โหลดรายชื่ออุปกรณ์จาก Google Sheet (Equipment) ============
 // รายการเริ่มต้น (เผื่อยังไม่เคยเพิ่มอุปกรณ์ลงชีต) — จะแสดงรวมกับรายการที่ Admin เพิ่มเข้ามาใหม่เสมอ
-const DEFAULT_EQUIPMENT = ['เครื่องคอมพิวเตอร์ PC', 'โปรเจคเตอร์(Projector)', 'เครื่องปริ้น(Printer)', 'เครื่องปรับอากาศ'];
+const DEFAULT_EQUIPMENT = ['เครื่องปริ้นเตอร์', 'โปรเจกเตอร์', 'คอมพิวเตอร์', 'เครื่องปรับอากาศ'];
 
 async function loadEquipmentOptions() {
   let equipment = DEFAULT_EQUIPMENT.slice();
@@ -356,9 +356,12 @@ async function loadAdmin() {
   } catch (err) { /* handled */ }
 }
 
+// เก็บรูปหลังซ่อมที่เลือกไว้ชั่วคราว (ยังไม่ส่ง) ต่อ ticket: { base64, fileName }
+const adminAfterImages = {};
+
 function renderAdminRequests() {
   const body = document.getElementById('adminRequestBody');
-  if (!allRequestsCache.length) { body.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">ไม่มีรายการ</td></tr>'; return; }
+  if (!allRequestsCache.length) { body.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">ไม่มีรายการ</td></tr>'; return; }
   body.innerHTML = allRequestsCache.map(r => `
     <tr>
       <td><b>${r.ticketId}</b></td>
@@ -377,16 +380,55 @@ function renderAdminRequests() {
           ${(masterDataCache.technicians||[]).map(t => `<option ${t===r.technician?'selected':''}>${t}</option>`).join('')}
         </select>
       </td>
+      <td>
+        <input type="file" accept="image/*" class="d-none admin-image-input" data-ticket="${r.ticketId}">
+        <button type="button" class="btn btn-sm btn-outline-brand admin-image-btn" data-ticket="${r.ticketId}" title="แนบรูปหลังซ่อม (ไม่บังคับ)">
+          <i class="fa-solid fa-camera"></i>
+        </button>
+        <div class="small text-muted admin-image-filename" data-ticket="${r.ticketId}">${r.afterImageUrl ? '<a href="'+r.afterImageUrl+'" target="_blank">มีรูปแล้ว</a>' : ''}</div>
+      </td>
       <td><button class="btn btn-sm btn-brand save-status-btn" data-ticket="${r.ticketId}"><i class="fa-solid fa-floppy-disk"></i></button></td>
     </tr>`).join('');
+
+  document.querySelectorAll('.admin-image-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelector(`.admin-image-input[data-ticket="${btn.dataset.ticket}"]`).click();
+    });
+  });
+
+  document.querySelectorAll('.admin-image-input').forEach(input => {
+    input.addEventListener('change', () => {
+      const file = input.files[0];
+      const ticket = input.dataset.ticket;
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) {
+        Swal.fire({ icon: 'warning', title: 'ไฟล์ใหญ่เกินไป', text: 'กรุณาเลือกรูปภาพขนาดไม่เกิน 5MB', confirmButtonColor: '#1f9d55' });
+        input.value = '';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        adminAfterImages[ticket] = { base64: e.target.result, fileName: file.name };
+        const label = document.querySelector(`.admin-image-filename[data-ticket="${ticket}"]`);
+        if (label) label.innerHTML = '<i class="fa-solid fa-check text-success"></i> ' + file.name;
+      };
+      reader.readAsDataURL(file);
+    });
+  });
 
   document.querySelectorAll('.save-status-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       const ticket = btn.dataset.ticket;
       const status = document.querySelector(`select[data-ticket="${ticket}"][data-field="status"]`).value;
       const technician = document.querySelector(`select[data-ticket="${ticket}"][data-field="technician"]`).value;
+      const imgData = adminAfterImages[ticket];
       try {
-        await callServer('updateRequestStatus', { ticketId: ticket, status, technician });
+        await callServer('updateRequestStatus', {
+          ticketId: ticket, status, technician,
+          imageBase64: imgData ? imgData.base64 : '',
+          fileName: imgData ? imgData.fileName : ''
+        });
+        delete adminAfterImages[ticket];
         Swal.fire({ toast:true, position:'top-end', icon:'success', title:'บันทึกสำเร็จ', showConfirmButton:false, timer:1500 });
       } catch (err) { /* handled */ }
     });
