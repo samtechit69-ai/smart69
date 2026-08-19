@@ -135,7 +135,7 @@
   .stat-card .stat-label { font-size: .9rem; opacity: .9; }
   .stat-total  { background: linear-gradient(135deg,#1f9d55,#167a42); }
   .stat-pending{ background: linear-gradient(135deg,#fd7e14,#e2650a); }
-  .stat-progress{ background: linear-gradient(135deg,#3b82f6,#1d4ed8); }
+  .stat-progress{ background: linear-gradient(135deg,#2563eb,#1e3a8a); }
   .stat-done   { background: linear-gradient(135deg,#20c997,#12876b); }
 
   .chart-box { background:#fff; border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); padding: 18px; height: 320px; }
