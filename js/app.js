@@ -283,9 +283,12 @@ async function loadDashboard() {
 
 function renderStatusChart(byStatus) {
   const ctx = document.getElementById('chartStatus');
-  const labels = Object.keys(byStatus);
-  const values = Object.values(byStatus);
-  const colors = labels.map(l => l === 'เสร็จสิ้น' ? '#1f9d55' : (l === 'กำลังดำเนินการ' ? '#3b82f6' : '#fd7e14'));
+  // ใช้ลำดับสถานะตายตัวเสมอ 3 สถานะ แม้บางสถานะจะมีค่าเป็น 0 ก็ยังแสดงใน legend
+  const statusOrder = ['รอดำเนินการ', 'กำลังดำเนินการ', 'เสร็จสิ้น'];
+  const statusColorMap = { 'รอดำเนินการ': '#fd7e14', 'กำลังดำเนินการ': '#3b82f6', 'เสร็จสิ้น': '#1f9d55' };
+  const labels = statusOrder;
+  const values = statusOrder.map(s => byStatus[s] || 0);
+  const colors = statusOrder.map(s => statusColorMap[s]);
   if (charts.status) charts.status.destroy();
   charts.status = new Chart(ctx, {
     type: 'doughnut',
@@ -298,10 +301,13 @@ function renderDeptChart(byDept) {
   const ctx = document.getElementById('chartDept');
   const labels = Object.keys(byDept);
   const values = Object.values(byDept);
+  // ชุดสีสลับกันไปตามจำนวนฝ่าย/สาขา ให้แยกแยะแต่ละแท่งได้ง่าย
+  const palette = ['#fd7e14', '#1f9d55', '#3b82f6', '#dc3545', '#a855f7', '#0ea5e9', '#f59e0b', '#14b8a6', '#ec4899', '#84cc16'];
+  const colors = labels.map((_, i) => palette[i % palette.length]);
   if (charts.dept) charts.dept.destroy();
   charts.dept = new Chart(ctx, {
     type: 'bar',
-    data: { labels, datasets: [{ label: 'จำนวนแจ้งซ่อม', data: values, backgroundColor: '#fd7e14', borderRadius: 6 }] },
+    data: { labels, datasets: [{ label: 'จำนวนแจ้งซ่อม', data: values, backgroundColor: colors, borderRadius: 6 }] },
     options: {
       plugins: { title: { display: true, text: 'จำนวนซ่อมแยกตามฝ่าย/สาขา', font: { size: 15 } }, legend: { display: false } },
       scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
