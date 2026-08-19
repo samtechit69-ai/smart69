@@ -29,7 +29,8 @@ function mockServer(action, payload) {
       switch (action) {
         case 'getDashboardData': {
           const stats = { total: MOCK_REQUESTS.length,
-            pending: MOCK_REQUESTS.filter(r => r.status !== 'เสร็จสิ้น').length,
+            pending: MOCK_REQUESTS.filter(r => r.status === 'รอดำเนินการ').length,
+            inProgress: MOCK_REQUESTS.filter(r => r.status === 'กำลังดำเนินการ').length,
             done: MOCK_REQUESTS.filter(r => r.status === 'เสร็จสิ้น').length };
           const byStatus = {}, byDept = {};
           MOCK_REQUESTS.forEach(r => { byStatus[r.status]=(byStatus[r.status]||0)+1; byDept[r.department]=(byDept[r.department]||0)+1; });
@@ -149,7 +150,7 @@ async function loadDepartmentOptions() {
 
 // ============ ฟอร์มแจ้งซ่อม: โหลดรายชื่ออุปกรณ์จาก Google Sheet (Equipment) ============
 // รายการเริ่มต้น (เผื่อยังไม่เคยเพิ่มอุปกรณ์ลงชีต) — จะแสดงรวมกับรายการที่ Admin เพิ่มเข้ามาใหม่เสมอ
-const DEFAULT_EQUIPMENT = ['เครื่องปริ้นเตอร์', 'โปรเจกเตอร์', 'คอมพิวเตอร์', 'เครื่องปรับอากาศ'];
+const DEFAULT_EQUIPMENT = ['เครื่องคอมพิวเตอร์ PC', 'โปรเจคเตอร์(Projector)', 'เครื่องปริ้น(Printer)', 'เครื่องปรับอากาศ'];
 
 async function loadEquipmentOptions() {
   let equipment = DEFAULT_EQUIPMENT.slice();
@@ -256,6 +257,7 @@ async function loadDashboard() {
     if (!data) return;
     document.getElementById('statTotal').textContent = data.stats.total;
     document.getElementById('statPending').textContent = data.stats.pending;
+    document.getElementById('statInProgress').textContent = data.stats.inProgress;
     document.getElementById('statDone').textContent = data.stats.done;
     renderStatusChart(data.byStatus);
     renderDeptChart(data.byDept);
