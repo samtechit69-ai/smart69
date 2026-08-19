@@ -85,7 +85,7 @@ function defaultErrorHandler(err) {
 
 // ============ LIFF INIT ============
 function initLiff() {
-  if (typeof liff === 'undefined' || !isLiffConfigured()) { renderGuestUser(); return; }
+  if (typeof liff === 'undefined' || !isLiffConfigured()) { renderGuestUser(); applyAdminVisibility(); return; }
 
   liff.init({ liffId: CONFIG.LIFF_ID }).then(() => {
     if (!liff.isLoggedIn()) { liff.login(); return; }
@@ -96,10 +96,26 @@ function initLiff() {
     document.getElementById('liffDisplayName').textContent = profile.displayName;
     if (profile.pictureUrl) document.getElementById('liffAvatar').src = profile.pictureUrl;
     document.getElementById('fullName').value = profile.displayName;
+    applyAdminVisibility();
   }).catch((err) => {
     console.warn('LIFF init failed:', err);
     renderGuestUser();
+    applyAdminVisibility();
   });
+}
+
+function isCurrentUserAdmin() {
+  return Array.isArray(CONFIG.ADMIN_LINE_IDS) && CONFIG.ADMIN_LINE_IDS.indexOf(currentUser.userId) !== -1;
+}
+
+function applyAdminVisibility() {
+  const navItem = document.getElementById('adminNavItem');
+  if (!navItem) return;
+  if (isCurrentUserAdmin()) {
+    navItem.classList.remove('d-none');
+  } else {
+    navItem.classList.add('d-none');
+  }
 }
 
 function renderGuestUser() {
@@ -339,6 +355,10 @@ document.querySelectorAll('#adminSubTabs [data-admin]').forEach(link => {
 });
 
 async function loadAdmin() {
+  if (!isCurrentUserAdmin()) {
+    Swal.fire({ icon: 'error', title: 'ไม่มีสิทธิ์เข้าถึง', text: 'หน้านี้สำหรับ Admin เท่านั้น', confirmButtonColor: '#1f9d55' });
+    return;
+  }
   try {
     const data = await callServer('getDashboardData');
     if (data) { allRequestsCache = data.requests; renderAdminRequests(); }
@@ -426,7 +446,8 @@ function renderAdminRequests() {
         await callServer('updateRequestStatus', {
           ticketId: ticket, status, technician,
           imageBase64: imgData ? imgData.base64 : '',
-          fileName: imgData ? imgData.fileName : ''
+          fileName: imgData ? imgData.fileName : '',
+          adminUserId: currentUser.userId
         });
         delete adminAfterImages[ticket];
         Swal.fire({ toast:true, position:'top-end', icon:'success', title:'บันทึกสำเร็จ', showConfirmButton:false, timer:1500 });
@@ -449,7 +470,7 @@ function renderMasterList(elId, items, sheetName) {
   el.querySelectorAll('.del-master-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       try {
-        await callServer('deleteMasterItem', { sheetName: btn.dataset.sheet, rowIndex: parseInt(btn.dataset.row) });
+        await callServer('deleteMasterItem', { sheetName: btn.dataset.sheet, rowIndex: parseInt(btn.dataset.row), adminUserId: currentUser.userId });
         loadAdmin();
         if (btn.dataset.sheet === 'Departments') loadDepartmentOptions();
         if (btn.dataset.sheet === 'Equipment') loadEquipmentOptions();
@@ -464,7 +485,7 @@ function bindAddMaster(btnId, inputId, sheetName) {
     const value = input.value.trim();
     if (!value) return;
     try {
-      await callServer('addMasterItem', { sheetName, value });
+      await callServer('addMasterItem', { sheetName, value, adminUserId: currentUser.userId });
       input.value = '';
       loadAdmin();
       if (sheetName === 'Departments') loadDepartmentOptions();
@@ -480,7 +501,7 @@ bindAddMaster('addEquipmentBtn', 'newEquipment', 'Equipment');
 document.getElementById('exportPdfBtn').addEventListener('click', async () => {
   Swal.fire({ title: 'กำลังสร้างรายงาน PDF...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
   try {
-    const res = await callServer('generateReportPdf');
+    const res = await callServer('generateReportPdf', { adminUserId: currentUser.userId });
     if (res && res.success) {
       const link = document.createElement('a');
       link.href = 'data:application/pdf;base64,' + res.base64;
