@@ -51,8 +51,11 @@
     color: #fff;
     display: flex; align-items: center; gap: 8px;
     font-size: .85rem;
+    transition: background .2s ease;
   }
   .liff-user-chip img { width: 28px; height: 28px; border-radius: 50%; border: 2px solid #fff; }
+  .liff-user-chip.liff-guest { cursor: pointer; }
+  .liff-user-chip.liff-guest:hover { background: rgba(255,255,255,0.28); }
 
   /* ===== Layout ===== */
   .page-wrap { padding: 24px 0 60px; }
