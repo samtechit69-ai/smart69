@@ -88,13 +88,19 @@ function initLiff() {
   if (typeof liff === 'undefined' || !isLiffConfigured()) { renderGuestUser(); applyAdminVisibility(); return; }
 
   liff.init({ liffId: CONFIG.LIFF_ID }).then(() => {
-    if (!liff.isLoggedIn()) { liff.login(); return; }
+    // ไม่บังคับ login อัตโนมัติอีกต่อไป — ถ้ายัง login ไม่ได้เข้ามาจะยังเข้าเว็บและใช้งานได้ปกติในโหมดผู้เยี่ยมชม
+    if (!liff.isLoggedIn()) {
+      renderGuestUser();
+      applyAdminVisibility();
+      return null;
+    }
     return liff.getProfile();
   }).then(profile => {
     if (!profile) return;
     currentUser = { userId: profile.userId, displayName: profile.displayName, pictureUrl: profile.pictureUrl };
     document.getElementById('liffDisplayName').textContent = profile.displayName;
     if (profile.pictureUrl) document.getElementById('liffAvatar').src = profile.pictureUrl;
+    document.getElementById('liffUserChip').classList.remove('liff-guest');
     document.getElementById('fullName').value = profile.displayName;
     applyAdminVisibility();
   }).catch((err) => {
@@ -119,8 +125,21 @@ function applyAdminVisibility() {
 }
 
 function renderGuestUser() {
-  document.getElementById('liffDisplayName').textContent = currentUser.displayName;
+  const nameEl = document.getElementById('liffDisplayName');
+  nameEl.textContent = 'เข้าสู่ระบบด้วย LINE';
+  const chip = document.getElementById('liffUserChip');
+  if (chip) chip.classList.add('liff-guest');
 }
+
+// แตะที่มุมขวาบนเพื่อ login ด้วย LINE (ไม่บังคับ — ใช้เฉพาะกรณีต้องการสิทธิ์ Admin หรืออยากให้ระบบจำชื่อ)
+document.getElementById('liffUserChip').addEventListener('click', () => {
+  if (currentUser.userId !== 'guest') return; // login อยู่แล้ว ไม่ต้องทำอะไร
+  if (typeof liff === 'undefined' || !isLiffConfigured()) {
+    Swal.fire({ icon: 'info', title: 'ยังไม่ได้ตั้งค่า LINE Login', text: 'ระบบนี้ยังไม่ได้เชื่อมต่อ LIFF', confirmButtonColor: '#1f9d55' });
+    return;
+  }
+  liff.login();
+});
 
 // ============ TAB NAVIGATION ============
 document.querySelectorAll('[data-tab]').forEach(link => {
