@@ -102,6 +102,7 @@ function initLiff() {
     if (profile.pictureUrl) document.getElementById('liffAvatar').src = profile.pictureUrl;
     document.getElementById('liffUserChip').classList.remove('liff-guest');
     document.getElementById('fullName').value = profile.displayName;
+    document.getElementById('logoutBtn').classList.remove('d-none');
     applyAdminVisibility();
   }).catch((err) => {
     console.warn('LIFF init failed:', err);
@@ -129,7 +130,25 @@ function renderGuestUser() {
   nameEl.textContent = 'เข้าสู่ระบบด้วย LINE';
   const chip = document.getElementById('liffUserChip');
   if (chip) chip.classList.add('liff-guest');
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) logoutBtn.classList.add('d-none');
 }
+
+// ============ ออกจากระบบ ============
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  Swal.fire({
+    icon: 'question', title: 'ออกจากระบบ?', text: 'คุณต้องการออกจากระบบใช่ไหม',
+    showCancelButton: true, confirmButtonText: 'ออกจากระบบ', cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#dc3545', cancelButtonColor: '#6c757d'
+  }).then((result) => {
+    if (!result.isConfirmed) return;
+    if (typeof liff !== 'undefined' && isLiffConfigured() && liff.isLoggedIn()) {
+      liff.logout();
+    }
+    // รีเซ็ตสถานะฝั่งหน้าเว็บกลับไปเป็นผู้เยี่ยมชม พร้อมล้าง query string ที่ค้างจากการ login เดิม
+    window.location.href = window.location.origin + window.location.pathname;
+  });
+});
 
 // แตะที่มุมขวาบนเพื่อ login ด้วย LINE (ไม่บังคับ — ใช้เฉพาะกรณีต้องการสิทธิ์ Admin หรืออยากให้ระบบจำชื่อ)
 document.getElementById('liffUserChip').addEventListener('click', () => {
