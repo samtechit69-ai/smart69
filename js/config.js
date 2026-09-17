@@ -16,6 +16,6 @@ const CONFIG = {
   // จากนั้นเปิด Google Sheet ชีต "Requests" ดูคอลัมน์ "LINE UserId" ในแถวของตัวเอง
   // ⚠️ ต้องตั้งค่าชุดเดียวกันนี้ใน ADMIN_LINE_IDS ของ Code.gs ด้วย (ฝั่ง Backend)
   ADMIN_LINE_IDS: [
-    'Ufa6024ec02c572e7a805a08dc3868729'
+    'Ufa6024ec02c572e7a805a08dc3868729','Udb0c57eda0ee39ad1d7636b4d7cc3c96'
   ]
 };
