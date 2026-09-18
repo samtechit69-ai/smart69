@@ -101,6 +101,8 @@ function initLiff() {
     document.getElementById('liffDisplayName').textContent = profile.displayName;
     if (profile.pictureUrl) document.getElementById('liffAvatar').src = profile.pictureUrl;
     document.getElementById('liffUserChip').classList.remove('liff-guest');
+    document.getElementById('liffUserChip').classList.remove('d-none');
+    document.getElementById('closeGuestBtn').classList.add('d-none');
     document.getElementById('fullName').value = profile.displayName;
     document.getElementById('logoutBtn').classList.remove('d-none');
     applyAdminVisibility();
@@ -126,13 +128,31 @@ function applyAdminVisibility() {
 }
 
 function renderGuestUser() {
-  const nameEl = document.getElementById('liffDisplayName');
-  nameEl.textContent = 'เข้าสู่ระบบด้วย LINE';
   const chip = document.getElementById('liffUserChip');
-  if (chip) chip.classList.add('liff-guest');
+  const closeBtn = document.getElementById('closeGuestBtn');
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn) logoutBtn.classList.add('d-none');
+
+  if (sessionStorage.getItem('liffGuestPromptDismissed') === '1') {
+    // ผู้ใช้เคยกดปิดข้อความเชิญ login ไปแล้วในเซสชันนี้ ซ่อนไว้ทั้งหมด
+    if (chip) chip.classList.add('d-none');
+    if (closeBtn) closeBtn.classList.add('d-none');
+    return;
+  }
+
+  const nameEl = document.getElementById('liffDisplayName');
+  nameEl.textContent = 'เข้าสู่ระบบด้วย LINE';
+  if (chip) { chip.classList.remove('d-none'); chip.classList.add('liff-guest'); }
+  if (closeBtn) closeBtn.classList.remove('d-none');
 }
+
+// ปุ่มปิดข้อความเชิญ login ของโหมดผู้เยี่ยมชม (ปิดแล้วจะไม่โผล่มาอีกจนกว่าจะปิดแท็บ/เปิดเว็บใหม่)
+document.getElementById('closeGuestBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  sessionStorage.setItem('liffGuestPromptDismissed', '1');
+  document.getElementById('liffUserChip').classList.add('d-none');
+  document.getElementById('closeGuestBtn').classList.add('d-none');
+});
 
 // ============ ออกจากระบบ ============
 document.getElementById('logoutBtn').addEventListener('click', () => {
@@ -145,6 +165,7 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
     if (typeof liff !== 'undefined' && isLiffConfigured() && liff.isLoggedIn()) {
       liff.logout();
     }
+    sessionStorage.removeItem('liffGuestPromptDismissed');
     // รีเซ็ตสถานะฝั่งหน้าเว็บกลับไปเป็นผู้เยี่ยมชม พร้อมล้าง query string ที่ค้างจากการ login เดิม
     window.location.href = window.location.origin + window.location.pathname;
   });
