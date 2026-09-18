@@ -106,6 +106,7 @@ function initLiff() {
     document.getElementById('fullName').value = profile.displayName;
     document.getElementById('logoutBtn').classList.remove('d-none');
     applyAdminVisibility();
+    loadDashboard(); // รีเฟรชตารางให้ปุ่มแก้ไขโผล่ทันทีถ้าเป็นเจ้าของรายการ
   }).catch((err) => {
     console.warn('LIFF init failed:', err);
     renderGuestUser();
@@ -203,7 +204,7 @@ const DEFAULT_DEPARTMENTS = [
   'สาขาวิชาการตลาด/ธุรกิจค้าปลีก', 'สาขาวิชาเทคโนโลยีธุรกิจดิจิทัล/สารสนเทศ', 'สาขาวิชาการจัดการโลจิสติกส์ฯ'
 ];
 
-async function loadDepartmentOptions() {
+async function getMergedDepartments() {
   let departments = DEFAULT_DEPARTMENTS.slice();
   try {
     const data = await callServer('getMasterData');
@@ -214,7 +215,11 @@ async function loadDepartmentOptions() {
   } catch (err) {
     // เชื่อมต่อไม่ได้ ใช้รายการเริ่มต้นแทน
   }
+  return departments;
+}
 
+async function loadDepartmentOptions() {
+  const departments = await getMergedDepartments();
   const select = document.getElementById('department');
   if (!select) return;
   const currentValue = select.value;
@@ -227,7 +232,7 @@ async function loadDepartmentOptions() {
 // รายการเริ่มต้น (เผื่อยังไม่เคยเพิ่มอุปกรณ์ลงชีต) — จะแสดงรวมกับรายการที่ Admin เพิ่มเข้ามาใหม่เสมอ
 const DEFAULT_EQUIPMENT = ['เครื่องปริ้นเตอร์', 'โปรเจกเตอร์', 'คอมพิวเตอร์', 'เครื่องปรับอากาศ'];
 
-async function loadEquipmentOptions() {
+async function getMergedEquipment() {
   let equipment = DEFAULT_EQUIPMENT.slice();
   try {
     const data = await callServer('getMasterData');
@@ -238,7 +243,11 @@ async function loadEquipmentOptions() {
   } catch (err) {
     // เชื่อมต่อไม่ได้ ใช้รายการเริ่มต้นแทน
   }
+  return equipment;
+}
 
+async function loadEquipmentOptions() {
+  const equipment = await getMergedEquipment();
   const select = document.getElementById('equipment');
   if (!select) return;
   const currentValue = select.value;
@@ -382,9 +391,15 @@ function statusBadge(status) {
   return '<span class="badge-status ' + cls + '">' + status + '</span>';
 }
 
+function canEditRequest(r) {
+  if (r.status !== 'รอดำเนินการ') return false;
+  if (currentUser.userId === 'guest') return false;
+  return (r.userId === currentUser.userId) || isCurrentUserAdmin();
+}
+
 function renderRequestTable(requests) {
   const body = document.getElementById('requestTableBody');
-  if (!requests.length) { body.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">ยังไม่มีรายการแจ้งซ่อม</td></tr>'; return; }
+  if (!requests.length) { body.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-4">ยังไม่มีรายการแจ้งซ่อม</td></tr>'; return; }
   body.innerHTML = requests.map(r => `
     <tr>
       <td><b>${r.ticketId}</b></td>
@@ -396,7 +411,80 @@ function renderRequestTable(requests) {
       <td>${urgencyBadge(r.urgency)}</td>
       <td>${statusBadge(r.status)}</td>
       <td>${r.imageUrl ? '<a href="'+r.imageUrl+'" target="_blank"><i class="fa-solid fa-image text-success"></i></a>' : '-'}</td>
+      <td>${canEditRequest(r) ? `<button type="button" class="btn btn-sm btn-outline-brand edit-request-btn" data-ticket="${r.ticketId}"><i class="fa-solid fa-pen"></i></button>` : '-'}</td>
     </tr>`).join('');
+
+  document.querySelectorAll('.edit-request-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const req = requests.find(x => x.ticketId === btn.dataset.ticket);
+      if (req) openEditRequestModal(req);
+    });
+  });
+}
+
+async function openEditRequestModal(req) {
+  const [departments, equipmentList] = await Promise.all([getMergedDepartments(), getMergedEquipment()]);
+
+  const deptOptions = departments.map(d => `<option ${d === req.department ? 'selected' : ''}>${d}</option>`).join('');
+  const equipOptions = equipmentList.map(e => `<option ${e === req.equipment ? 'selected' : ''}>${e}</option>`).join('');
+  const urgencyOptions = ['ปกติ', 'ปานกลาง', 'สูง'].map(u => `<option ${u === req.urgency ? 'selected' : ''}>${u}</option>`).join('');
+
+  const { value: formValues } = await Swal.fire({
+    title: 'แก้ไขรายการแจ้งซ่อม ' + req.ticketId,
+    width: 560,
+    html: `
+      <div class="text-start">
+        <label class="form-label small fw-bold mt-2">ฝ่าย/สาขา</label>
+        <select id="editDepartment" class="form-select form-select-sm">${deptOptions}</select>
+
+        <label class="form-label small fw-bold mt-2">อุปกรณ์</label>
+        <select id="editEquipment" class="form-select form-select-sm">${equipOptions}</select>
+
+        <label class="form-label small fw-bold mt-2">สถานที่ (อาคาร/ห้อง)</label>
+        <input id="editLocation" type="text" class="form-control form-control-sm" value="${(req.location || '').replace(/"/g, '&quot;')}">
+
+        <label class="form-label small fw-bold mt-2">ความเร่งด่วน</label>
+        <select id="editUrgency" class="form-select form-select-sm">${urgencyOptions}</select>
+
+        <label class="form-label small fw-bold mt-2">รายละเอียดอาการ</label>
+        <textarea id="editDetail" class="form-control form-control-sm" rows="3">${req.detail || ''}</textarea>
+      </div>
+    `,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonText: 'บันทึกการแก้ไข',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#1f9d55',
+    cancelButtonColor: '#6c757d',
+    preConfirm: () => {
+      const department = document.getElementById('editDepartment').value;
+      const equipment = document.getElementById('editEquipment').value;
+      const location = document.getElementById('editLocation').value.trim();
+      const urgency = document.getElementById('editUrgency').value;
+      const detail = document.getElementById('editDetail').value.trim();
+      if (!department || !equipment || !location || !detail) {
+        Swal.showValidationMessage('กรุณากรอกข้อมูลให้ครบทุกช่อง');
+        return false;
+      }
+      return { department, equipment, location, urgency, detail };
+    }
+  });
+
+  if (!formValues) return;
+
+  try {
+    const res = await callServer('editMaintenanceRequest', {
+      ticketId: req.ticketId,
+      requesterUserId: currentUser.userId,
+      ...formValues
+    });
+    if (res && res.success) {
+      Swal.fire({ icon: 'success', title: 'แก้ไขสำเร็จ', confirmButtonColor: '#1f9d55' });
+      loadDashboard();
+    } else {
+      Swal.fire({ icon: 'error', title: 'แก้ไขไม่สำเร็จ', text: (res && res.error) || '', confirmButtonColor: '#1f9d55' });
+    }
+  } catch (err) { /* handled in callServer */ }
 }
 
 function formatDate(d) {
